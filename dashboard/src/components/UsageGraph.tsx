@@ -23,9 +23,10 @@ interface Request {
 
 interface Props {
   requests: Request[];
+  theme?: 'dark' | 'light';
 }
 
-export default function UsageGraph({ requests }: Props) {
+export default function UsageGraph({ requests, theme = 'dark' }: Props) {
   const recentRequests = requests.slice(-50);
 
   const latencyData = recentRequests.map((r, idx) => ({
@@ -50,8 +51,8 @@ export default function UsageGraph({ requests }: Props) {
   }));
 
   const pieData = [
-    { name: 'Success', value: successCounts.success, fill: '#22c55e' },
-    { name: 'Failed', value: successCounts.failed, fill: '#ef4444' },
+    { name: 'Success', value: successCounts.success, fill: '#10b981' },
+    { name: 'Failed', value: successCounts.failed, fill: '#f43f5e' },
   ];
 
   if (recentRequests.length === 0) {
@@ -68,19 +69,19 @@ export default function UsageGraph({ requests }: Props) {
       <div style={styles.grid}>
         <div style={styles.chartCard}>
           <div style={styles.chartTitle}>Latency (ms)</div>
-          <ResponsiveContainer width="100%" height={200}>
+          <ResponsiveContainer width="100%" height={200} key={theme}>
             <LineChart data={latencyData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-              <XAxis dataKey="index" tick={false} stroke="#64748b" />
-              <YAxis stroke="#64748b" fontSize={11} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
+              <XAxis dataKey="index" tick={false} stroke="var(--text-secondary)" />
+              <YAxis stroke="var(--text-secondary)" fontSize={10} />
               <Tooltip
-                contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8 }}
-                labelStyle={{ color: '#94a3b8' }}
+                contentStyle={{ background: 'var(--chart-tooltip-bg)', border: '1px solid var(--card-border)', borderRadius: 12 }}
+                labelStyle={{ color: 'var(--text-secondary)' }}
               />
               <Line
                 type="monotone"
                 dataKey="latency"
-                stroke="#3b82f6"
+                stroke="#6366f1"
                 strokeWidth={2}
                 dot={false}
               />
@@ -89,32 +90,32 @@ export default function UsageGraph({ requests }: Props) {
         </div>
         <div style={styles.chartCard}>
           <div style={styles.chartTitle}>Requests by Model</div>
-          <ResponsiveContainer width="100%" height={200}>
+          <ResponsiveContainer width="100%" height={200} key={theme}>
             <BarChart data={modelData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-              <XAxis dataKey="model" stroke="#64748b" fontSize={10} />
-              <YAxis stroke="#64748b" fontSize={11} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
+              <XAxis dataKey="model" stroke="var(--text-secondary)" fontSize={9} />
+              <YAxis stroke="var(--text-secondary)" fontSize={10} />
               <Tooltip
-                contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8 }}
+                contentStyle={{ background: 'var(--chart-tooltip-bg)', border: '1px solid var(--card-border)', borderRadius: 12 }}
               />
-              <Bar dataKey="count" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="count" fill="#818cf8" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
         <div style={styles.chartCard}>
           <div style={styles.chartTitle}>Success vs Failure</div>
-          <ResponsiveContainer width="100%" height={200}>
+          <ResponsiveContainer width="100%" height={200} key={theme}>
             <BarChart data={pieData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-              <XAxis dataKey="name" stroke="#64748b" fontSize={11} />
-              <YAxis stroke="#64748b" fontSize={11} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
+              <XAxis dataKey="name" stroke="var(--text-secondary)" fontSize={10} />
+              <YAxis stroke="var(--text-secondary)" fontSize={10} />
               <Tooltip
-                contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8 }}
+                contentStyle={{ background: 'var(--chart-tooltip-bg)', border: '1px solid var(--card-border)', borderRadius: 12 }}
               />
               <Legend />
               <Bar dataKey="value" name="Requests" radius={[4, 4, 0, 0]}>
                 {pieData.map(entry => (
-                  <rect key={entry.name} fill={entry.fill} />
+                  <rect key={entry.name} fill={entry.name === 'Success' ? '#10b981' : '#f43f5e'} />
                 ))}
               </Bar>
             </BarChart>
@@ -127,40 +128,43 @@ export default function UsageGraph({ requests }: Props) {
 
 const styles: Record<string, React.CSSProperties> = {
   container: {
-    marginBottom: 24,
+    marginBottom: 32,
   },
   heading: {
     fontSize: 18,
     fontWeight: 600,
-    color: '#e2e8f0',
+    color: 'var(--text-primary)',
     marginBottom: 16,
+    letterSpacing: '-0.01em',
   },
   grid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-    gap: 12,
+    gap: 20,
   },
   chartCard: {
-    background: '#1e293b',
-    borderRadius: 12,
-    padding: 16,
-    border: '1px solid #334155',
+    background: 'var(--card-bg)',
+    borderRadius: 16,
+    padding: 20,
+    border: '1px solid var(--card-border)',
+    backdropFilter: 'blur(8px)',
   },
   chartTitle: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: 600,
-    color: '#94a3b8',
-    marginBottom: 12,
+    color: 'var(--text-secondary)',
+    marginBottom: 16,
     textTransform: 'uppercase',
+    letterSpacing: '0.08em',
   },
   empty: {
     textAlign: 'center',
     padding: 48,
-    color: '#64748b',
-    background: '#1e293b',
-    borderRadius: 12,
-    border: '1px solid #334155',
-    marginBottom: 24,
+    color: 'var(--text-secondary)',
+    background: 'var(--card-bg)',
+    borderRadius: 16,
+    border: '1px solid var(--card-border)',
+    marginBottom: 32,
   },
   emptyText: {
     fontSize: 14,

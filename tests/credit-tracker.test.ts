@@ -29,13 +29,12 @@ describe('CreditTracker', () => {
       const account = accountManager.addAccount({
         name: 'Credit Test',
         token: 't',
-        dailyCreditLimit: 50,
       });
 
       const credit = creditTracker.getCredit(account.id);
       expect(credit).toBeDefined();
-      expect(credit!.remaining).toBe(50);
-      expect(credit!.limit).toBe(50);
+      expect(credit!.remaining).toBe(0.25);
+      expect(credit!.limit).toBe(0.25);
       expect(credit!.used).toBe(0);
     });
   });
@@ -45,20 +44,18 @@ describe('CreditTracker', () => {
       const account = accountManager.addAccount({
         name: 'Usage Test',
         token: 't',
-        dailyCreditLimit: 100,
       });
 
-      creditTracker.recordUsage(account.id, 10);
+      creditTracker.recordUsage(account.id, 0.1);
       const credit = creditTracker.getCredit(account.id);
-      expect(credit!.used).toBe(10);
-      expect(credit!.remaining).toBe(90);
+      expect(credit!.used).toBe(0.1);
+      expect(credit!.remaining).toBe(0.15);
     });
 
     it('should not go below zero', () => {
       const account = accountManager.addAccount({
         name: 'Zero Test',
         token: 't',
-        dailyCreditLimit: 5,
       });
 
       creditTracker.recordUsage(account.id, 10);
@@ -71,7 +68,6 @@ describe('CreditTracker', () => {
         const account = accountManager.addAccount({
           name: 'Exhaust Test',
           token: 't',
-          dailyCreditLimit: 3,
         });
 
         creditTracker.on('credit:exhausted', ({ accountId, credit }) => {
@@ -80,7 +76,7 @@ describe('CreditTracker', () => {
           done();
         });
 
-        creditTracker.recordUsage(account.id, 3);
+        creditTracker.recordUsage(account.id, 0.25);
       });
     });
 
@@ -97,16 +93,16 @@ describe('CreditTracker', () => {
     });
 
     it('should return false when exhausted', () => {
-      const account = accountManager.addAccount({ name: 'No Credit', token: 't', dailyCreditLimit: 1 });
-      creditTracker.recordUsage(account.id, 1);
+      const account = accountManager.addAccount({ name: 'No Credit', token: 't' });
+      creditTracker.recordUsage(account.id, 0.25);
       expect(creditTracker.hasCredit(account.id)).toBe(false);
     });
   });
 
   describe('getAllCredits', () => {
     it('should return credits for all accounts', () => {
-      accountManager.addAccount({ name: 'A', token: 't1', dailyCreditLimit: 10 });
-      accountManager.addAccount({ name: 'B', token: 't2', dailyCreditLimit: 20 });
+      accountManager.addAccount({ name: 'A', token: 't1' });
+      accountManager.addAccount({ name: 'B', token: 't2' });
 
       const all = creditTracker.getAllCredits();
       expect(all).toHaveLength(2);
@@ -115,35 +111,35 @@ describe('CreditTracker', () => {
 
   describe('reset', () => {
     it('should reset a single account credit', () => {
-      const account = accountManager.addAccount({ name: 'Reset', token: 't', dailyCreditLimit: 10 });
-      creditTracker.recordUsage(account.id, 10);
+      const account = accountManager.addAccount({ name: 'Reset', token: 't' });
+      creditTracker.recordUsage(account.id, 0.25);
       expect(creditTracker.hasCredit(account.id)).toBe(false);
 
       creditTracker.resetCredit(account.id);
       expect(creditTracker.hasCredit(account.id)).toBe(true);
-      expect(creditTracker.getCredit(account.id)!.remaining).toBe(10);
+      expect(creditTracker.getCredit(account.id)!.remaining).toBe(0.25);
     });
 
     it('should reset all credits', () => {
-      const a1 = accountManager.addAccount({ name: 'A', token: 't1', dailyCreditLimit: 5 });
-      const a2 = accountManager.addAccount({ name: 'B', token: 't2', dailyCreditLimit: 5 });
+      const a1 = accountManager.addAccount({ name: 'A', token: 't1' });
+      const a2 = accountManager.addAccount({ name: 'B', token: 't2' });
 
-      creditTracker.recordUsage(a1.id, 5);
-      creditTracker.recordUsage(a2.id, 3);
+      creditTracker.recordUsage(a1.id, 0.25);
+      creditTracker.recordUsage(a2.id, 0.1);
 
       creditTracker.resetAllCredits();
 
-      expect(creditTracker.getCredit(a1.id)!.remaining).toBe(5);
-      expect(creditTracker.getCredit(a2.id)!.remaining).toBe(5);
+      expect(creditTracker.getCredit(a1.id)!.remaining).toBe(0.5);
+      expect(creditTracker.getCredit(a2.id)!.remaining).toBe(0.5);
     });
   });
 
   describe('total remaining', () => {
     it('should sum remaining across all accounts', () => {
-      accountManager.addAccount({ name: 'A', token: 't1', dailyCreditLimit: 100 });
-      accountManager.addAccount({ name: 'B', token: 't2', dailyCreditLimit: 200 });
+      accountManager.addAccount({ name: 'A', token: 't1' });
+      accountManager.addAccount({ name: 'B', token: 't2' });
 
-      expect(creditTracker.getTotalRemaining()).toBe(300);
+      expect(creditTracker.getTotalRemaining()).toBe(1);
     });
   });
 });

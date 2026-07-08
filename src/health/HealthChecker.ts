@@ -64,7 +64,9 @@ export class HealthChecker extends EventEmitter {
   async runHealthChecks(): Promise<Map<string, HealthStatus>> {
     const config = getConfig();
     const log = getLogger();
-    const accounts = this.accountManager.getActiveAccounts();
+    const accounts = this.accountManager.getAllAccounts().filter(
+      a => a.status === 'active' || a.status === 'error' || a.status === 'pending_verification',
+    );
 
     const results = await Promise.allSettled(
       accounts.map(acc => this.checkSingleAccount(acc)),
@@ -111,6 +113,10 @@ export class HealthChecker extends EventEmitter {
         health.consecutiveFailures = 0;
         health.status = 'active';
 
+        if (this.accountManager.getAccount(account.id)?.status !== 'active') {
+          this.accountManager.setAccountStatus(account.id, 'active');
+        }
+
         if (health.errorRate > 0) {
           health.errorRate = health.failedRequests / Math.max(1, health.totalRequests);
         }
@@ -122,8 +128,10 @@ export class HealthChecker extends EventEmitter {
 
         if (response.status === 429 || response.status === 402) {
           health.status = 'exhausted';
+          this.accountManager.setAccountStatus(account.id, 'exhausted');
         } else if (response.status === 401) {
           health.status = 'error';
+          this.accountManager.setAccountStatus(account.id, 'error');
         }
 
         if (health.consecutiveFailures >= 3) {

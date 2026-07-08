@@ -3,16 +3,19 @@ import { v4 as uuidv4 } from 'uuid';
 import { Account, AccountStatus, CreateAccountInput, UpdateAccountInput } from '../types';
 import { getLogger } from '../logger';
 import { getConfig } from '../config';
+import { Database } from '../database';
 
 export type AccountEvent = 'account:added' | 'account:removed' | 'account:updated' | 'account:status-changed';
 
 export class AccountManager extends EventEmitter {
   private accounts: Map<string, Account> = new Map();
   private initialized = false;
+  private db?: Database;
 
-  constructor() {
+  constructor(database?: Database) {
     super();
     this.setMaxListeners(100);
+    this.db = database;
   }
 
   async initialize(): Promise<void> {
@@ -20,17 +23,35 @@ export class AccountManager extends EventEmitter {
     const config = getConfig();
     const log = getLogger();
 
-    for (const acc of config.accounts) {
-      this.accounts.set(acc.id, {
-        id: acc.id,
-        name: acc.name,
-        token: acc.token,
-        status: 'pending_verification',
-        dailyCreditLimit: acc.dailyCreditLimit,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
-      log.info('AccountManager', `Loaded account: ${acc.id} (${acc.name})`);
+    const loadedFromDb = this.db?.isConnected() ? await this.db.loadAccounts() : [];
+
+    if (loadedFromDb.length > 0) {
+      for (const acc of loadedFromDb) {
+        this.accounts.set(acc.id, {
+          id: acc.id,
+          name: acc.name,
+          token: acc.token,
+          status: 'pending_verification',
+          dailyCreditLimit: acc.dailyCreditLimit,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+        log.info('AccountManager', `Loaded account from DB: ${acc.id} (${acc.name})`);
+      }
+    } else if (config.accounts.length > 0) {
+      for (const acc of config.accounts) {
+        this.accounts.set(acc.id, {
+          id: acc.id,
+          name: acc.name,
+          token: acc.token,
+          status: 'pending_verification',
+          dailyCreditLimit: acc.dailyCreditLimit,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+        this.db?.saveAccount({ id: acc.id, name: acc.name, token: acc.token, dailyCreditLimit: acc.dailyCreditLimit });
+        log.info('AccountManager', `Loaded account from env: ${acc.id} (${acc.name})`);
+      }
     }
 
     this.initialized = true;
@@ -58,6 +79,7 @@ export class AccountManager extends EventEmitter {
     };
 
     this.accounts.set(id, account);
+    this.db?.saveAccount({ id, name: input.name, token: input.token, dailyCreditLimit: account.dailyCreditLimit });
     this.emit('account:added', account);
     log.info('AccountManager', `Added account: ${id} (${input.name})`);
     return account;
@@ -71,6 +93,7 @@ export class AccountManager extends EventEmitter {
       return false;
     }
     this.accounts.delete(id);
+    this.db?.deleteAccount(id);
     this.emit('account:removed', account);
     log.info('AccountManager', `Removed account: ${id} (${account.name})`);
     return true;
@@ -101,7 +124,11 @@ export class AccountManager extends EventEmitter {
   }
 
   setAccountStatus(id: string, status: AccountStatus): Account | null {
-    return this.updateAccount(id, { status });
+    const result = this.updateAccount(id, { status });
+    if (result) {
+      this.db?.updateAccountStatus(id, status);
+    }
+    return result;
   }
 
   getAccount(id: string): Account | undefined {

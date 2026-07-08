@@ -155,7 +155,7 @@ export class RequestScheduler extends EventEmitter {
     });
 
     try {
-      const response = await fetch(`${config.puterApiBaseUrl}/ai/chat`, {
+      const response = await fetch(`${config.puterApiBaseUrl}/puterai/openai/v1/chat/completions`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${account.token}`,
@@ -164,7 +164,7 @@ export class RequestScheduler extends EventEmitter {
         },
         body: JSON.stringify({
           model: input.model,
-          messages: [{ role: 'user', content: input.prompt }],
+          messages: input.messages ?? [{ role: 'user', content: input.prompt }],
           stream: input.stream ?? false,
           max_tokens: input.maxTokens,
           temperature: input.temperature,
@@ -175,8 +175,8 @@ export class RequestScheduler extends EventEmitter {
       const latency = Date.now() - startTime;
 
       if (response.ok) {
-        const data = await response.json() as { message?: { content?: string }; choices?: Array<{ message?: { content?: string } }> };
-        const content = data?.message?.content || data?.choices?.[0]?.message?.content || JSON.stringify(data);
+        const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
+        const content = data?.choices?.[0]?.message?.content || JSON.stringify(data);
 
         log.info('RequestScheduler', `Request succeeded on ${account.id}`, {
           accountId: account.id,

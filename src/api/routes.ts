@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import fetch from 'node-fetch';
 import { AccountManager } from '../accounts/AccountManager';
 import { CreditTracker } from '../credit/CreditTracker';
 import { HealthChecker } from '../health/HealthChecker';
@@ -7,6 +8,7 @@ import { AuthenticationManager } from '../auth/AuthenticationManager';
 import { CreateAccountInput, UpdateAccountInput, AIRequestInput, DashboardStats, SchedulerStrategy } from '../types';
 import { getLogger } from '../logger';
 import { getConfig } from '../config';
+import { Database } from '../database';
 
 export function createRouter(
   accountManager: AccountManager,
@@ -14,6 +16,7 @@ export function createRouter(
   healthChecker: HealthChecker,
   requestScheduler: RequestScheduler,
   authManager: AuthenticationManager,
+  database?: Database,
 ): Router {
   const router = Router();
   const log = getLogger();
@@ -72,6 +75,8 @@ export function createRouter(
       const verificationResult = await authManager.verifyAccount(account);
       if (verificationResult.valid) {
         accountManager.setAccountStatus(account.id, 'active');
+      } else {
+        accountManager.setAccountStatus(account.id, 'error');
       }
 
       res.status(201).json({
@@ -271,9 +276,84 @@ export function createRouter(
   });
 
   // History
-  router.get('/history', (req: Request, res: Response) => {
+  router.get('/history', async (req: Request, res: Response) => {
     const limit = Math.min(parseInt(req.query.limit as string) || 100, 1000);
-    res.json({ requests: requestScheduler.getRequestHistory(limit) });
+    const offset = Math.max(parseInt(req.query.offset as string) || 0, 0);
+    if (database?.isConnected()) {
+      const rows = await database.getResponses(limit, offset);
+      const total = (await database.getResponseStats()).total;
+      res.json({ requests: rows, total });
+    } else {
+      res.json({ requests: requestScheduler.getRequestHistory(limit), total: requestScheduler.getRequestHistory(limit).length });
+    }
+  });
+
+  // Database-backed stats
+  router.get('/db/stats', async (_req: Request, res: Response) => {
+    if (!database?.isConnected()) {
+      res.json({ connected: false, message: 'Supabase not configured' });
+      return;
+    }
+    const stats = await database.getResponseStats();
+    res.json({ connected: true, ...stats });
+  });
+
+  router.get('/db/responses/account/:id', async (req: Request, res: Response) => {
+    if (!database?.isConnected()) {
+      res.json({ error: 'Supabase not configured', responses: [] });
+      return;
+    }
+    const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
+    const rows = await database.getResponsesByAccount(req.params.id as string, limit);
+    res.json({ responses: rows });
+  });
+
+  // Available models from Puter API
+  router.get('/models', async (_req: Request, res: Response) => {
+    try {
+      const [detailsRes, feedRes] = await Promise.all([
+        fetch('https://api.puter.com/puterai/chat/models/details', {
+          signal: AbortSignal.timeout(8000),
+        }).catch(() => null),
+        fetch('https://developer.puter.com/ai/models-feed.xml', {
+          signal: AbortSignal.timeout(8000),
+        }).catch(() => null),
+      ]);
+
+      const feedByName = new Map<string, string>();
+      if (feedRes?.ok) {
+        const xml = await feedRes.text();
+        const itemRegex = /<item>([\s\S]*?)<\/item>/g;
+        let match: RegExpExecArray | null;
+        while ((match = itemRegex.exec(xml)) !== null) {
+          const title = match[1].match(/<title>([^<]*)<\/title>/)?.[1] || '';
+          const desc = match[1].match(/<description>([\s\S]*?)<\/description>/)?.[1] || '';
+          const cleanDesc = desc.replace(/<!\[CDATA\[/g, '').replace(/\]\]>/g, '').trim();
+          const name = title.includes(': ') ? title.split(': ')[1] : title;
+          feedByName.set(name.toLowerCase(), cleanDesc.slice(0, 200));
+        }
+      }
+
+      const models: Array<{ id: string; name: string; provider: string; description: string }> = [];
+
+      if (detailsRes?.ok) {
+        const data = await detailsRes.json() as { models?: Array<{ id: string; name?: string; provider?: string }> };
+        for (const m of data?.models || []) {
+          const id = m.id;
+          const name = m.name || id;
+          const provider = m.provider || (id.includes('/') ? id.split('/')[0] : 'puter');
+          const desc = feedByName.get(name.toLowerCase()) || feedByName.get(id.toLowerCase()) || '';
+          models.push({ id, name, provider, description: desc });
+        }
+      }
+
+      models.sort((a, b) => a.id.localeCompare(b.id));
+      res.json({ models, total: models.length });
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      log.error('API', 'Failed to fetch models', { error: errorMsg });
+      res.status(502).json({ error: 'Failed to fetch models', models: [], total: 0 });
+    }
   });
 
   function getStrategy(): SchedulerStrategy {

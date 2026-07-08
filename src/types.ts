@@ -80,9 +80,15 @@ export interface QueuedRequest {
   timeout: NodeJS.Timeout;
 }
 
+export interface ChatMessage {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+}
+
 export interface AIRequestInput {
   model: string;
   prompt: string;
+  messages?: ChatMessage[];
   stream?: boolean;
   maxTokens?: number;
   temperature?: number;

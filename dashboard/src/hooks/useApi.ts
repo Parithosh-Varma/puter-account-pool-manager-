@@ -118,6 +118,22 @@ export function useApi() {
     }
   };
 
+  const deleteAccount = async (id: string) => {
+    try {
+      const res = await fetch(`/api/accounts/${id}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        await fetchData();
+      } else {
+        const data = await res.json();
+        setError(data.error || 'Failed to delete account');
+      }
+    } catch {
+      setError('Failed to delete account');
+    }
+  };
+
   const setStrategy = async (strategy: string) => {
     try {
       const res = await fetch('/api/strategy', {
@@ -141,6 +157,7 @@ export function useApi() {
     refreshInterval,
     setRefreshInterval,
     toggleAccount,
+    deleteAccount,
     setStrategy,
     refetch: fetchData,
   };

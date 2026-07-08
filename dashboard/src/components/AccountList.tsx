@@ -25,9 +25,11 @@ interface Account {
 interface Props {
   accounts: Account[];
   onToggle: (id: string, status: string) => void;
+  onRefresh: () => void;
+  onDelete: (id: string) => void;
 }
 
-export default function AccountList({ accounts, onToggle }: Props) {
+export default function AccountList({ accounts, onToggle, onRefresh, onDelete }: Props) {
   if (accounts.length === 0) {
     return (
       <div style={styles.empty}>
@@ -50,6 +52,8 @@ export default function AccountList({ accounts, onToggle }: Props) {
             key={account.id}
             account={account}
             onToggle={() => onToggle(account.id, account.status)}
+            onRefresh={onRefresh}
+            onDelete={() => onDelete(account.id)}
           />
         ))}
       </div>

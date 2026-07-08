@@ -9,7 +9,9 @@ import { AuthenticationManager } from './auth/AuthenticationManager';
 import { CreditTracker } from './credit/CreditTracker';
 import { HealthChecker } from './health/HealthChecker';
 import { RequestScheduler } from './scheduler/RequestScheduler';
+import { Database } from './database';
 import { createRouter } from './api/routes';
+import { createOpenAIRouter } from './api/openai';
 import { apiKeyAuth, requestLogger } from './api/middleware';
 
 async function main(): Promise<void> {
@@ -25,13 +27,21 @@ async function main(): Promise<void> {
   });
 
   // Initialize modules
-  const accountManager = new AccountManager();
+  const database = new Database();
+  database.initialize();
+
+  const accountManager = new AccountManager(database);
   await accountManager.initialize();
 
   const authManager = new AuthenticationManager();
   const creditTracker = new CreditTracker(accountManager);
   const healthChecker = new HealthChecker(accountManager);
   const requestScheduler = new RequestScheduler(accountManager, creditTracker, healthChecker);
+
+  // Wire database to record responses
+  requestScheduler.on('request:completed', (record) => {
+    database.storeResponse(record);
+  });
 
   creditTracker.start();
   healthChecker.start();
@@ -82,8 +92,16 @@ async function main(): Promise<void> {
     healthChecker,
     requestScheduler,
     authManager,
+    database,
   );
   app.use('/api', router);
+
+  // OpenAI-compatible API (no rate limit, uses API key auth)
+  const openaiRouter = createOpenAIRouter(requestScheduler);
+  if (config.nodeEnv === 'production') {
+    app.use('/v1', apiKeyAuth);
+  }
+  app.use('/v1', openaiRouter);
 
   // Health probe for Docker/K8s
   app.get('/healthz', (_req, res) => {

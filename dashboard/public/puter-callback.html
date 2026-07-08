@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Authenticating...</title></head>
+<body style="display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#0b0f19;color:#f3f4f6;font-family:sans-serif;">
+  <p>Authenticated! You can close this window.</p>
+  <script>
+    var params = new URLSearchParams(window.location.search);
+    var token = params.get('token');
+    var name = params.get('name') || '';
+    if (token && window.opener) {
+      window.opener.postMessage({ type: 'puter-auth', token: token, accountName: name }, '*');
+    }
+    setTimeout(function() { window.close(); }, 2000);
+  </script>
+</body>
+</html>

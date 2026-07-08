@@ -1,80 +1,76 @@
 import { EventEmitter } from 'events';
 import { CreditInfo } from '../types';
 import { getLogger } from '../logger';
-import { getConfig } from '../config';
 import { AccountManager } from '../accounts/AccountManager';
 
 export class CreditTracker extends EventEmitter {
   private creditMap: Map<string, CreditInfo> = new Map();
   private accountManager: AccountManager;
-  private resetTimer: NodeJS.Timeout | null = null;
 
   constructor(accountManager: AccountManager) {
     super();
     this.accountManager = accountManager;
   }
 
+  private computeLimit(): number {
+    const count = Math.max(1, this.accountManager.getAllAccounts().length);
+    return Math.max(0.25, count * 0.25);
+  }
+
   start(): void {
-    const config = getConfig();
     const log = getLogger();
 
     for (const account of this.accountManager.getAllAccounts()) {
-      this.initializeCredit(account.id, account.dailyCreditLimit);
+      this.initializeCredit(account.id);
     }
 
-    this.resetTimer = setInterval(() => {
-      log.info('CreditTracker', 'Resetting daily credit limits');
-      for (const account of this.accountManager.getAllAccounts()) {
-        this.initializeCredit(account.id, account.dailyCreditLimit);
-      }
-    }, config.creditResetIntervalMs);
-
-    this.accountManager.on('account:added', (account) => {
-      this.initializeCredit(account.id, account.dailyCreditLimit);
+    this.accountManager.on('account:added', () => {
+      this.recomputeAll();
     });
 
     this.accountManager.on('account:removed', (account) => {
       this.creditMap.delete(account.id);
     });
 
-    this.accountManager.on('account:updated', (account) => {
-      const existing = this.creditMap.get(account.id);
-      if (existing && existing.limit !== account.dailyCreditLimit) {
-        existing.limit = account.dailyCreditLimit;
-        existing.remaining = Math.min(existing.remaining, account.dailyCreditLimit);
-      }
+    this.accountManager.on('account:updated', () => {
+      this.recomputeAll();
     });
 
-    log.info('CreditTracker', 'Credit tracker started');
+    log.info('CreditTracker', 'Credit tracker started (account count × 0.25)');
   }
 
   stop(): void {
-    if (this.resetTimer) {
-      clearInterval(this.resetTimer);
-      this.resetTimer = null;
+    /* no-op */
+  }
+
+  private recomputeAll(): void {
+    const limit = this.computeLimit();
+    for (const account of this.accountManager.getAllAccounts()) {
+      const existing = this.creditMap.get(account.id);
+      if (existing) {
+        existing.limit = limit;
+        existing.remaining = Math.max(0, limit - existing.used);
+      } else {
+        this.initializeCredit(account.id);
+      }
     }
   }
 
-  private initializeCredit(accountId: string, limit: number): void {
-    const now = new Date();
-    const config = getConfig();
+  private initializeCredit(accountId: string): void {
+    const limit = this.computeLimit();
     this.creditMap.set(accountId, {
       accountId,
       remaining: limit,
       limit,
       used: 0,
-      resetAt: new Date(now.getTime() + config.creditResetIntervalMs),
-      lastUpdated: now,
+      resetAt: new Date(Date.now() + 86400000),
+      lastUpdated: new Date(),
     });
   }
 
   recordUsage(accountId: string, cost: number = 1): CreditInfo | undefined {
-    const log = getLogger();
     const credit = this.creditMap.get(accountId);
-    if (!credit) {
-      log.warn('CreditTracker', `No credit info for account ${accountId}`);
-      return undefined;
-    }
+    if (!credit) return undefined;
 
     credit.used += cost;
     credit.remaining = Math.max(0, credit.limit - credit.used);
@@ -82,11 +78,6 @@ export class CreditTracker extends EventEmitter {
 
     if (credit.remaining <= 0) {
       this.emit('credit:exhausted', { accountId, credit });
-      log.info('CreditTracker', `Account ${accountId} credit exhausted`, {
-        accountId,
-        used: credit.used,
-        metadata: { limit: credit.limit },
-      });
     }
 
     return { ...credit };
@@ -116,15 +107,12 @@ export class CreditTracker extends EventEmitter {
   }
 
   resetCredit(accountId: string): void {
-    const account = this.accountManager.getAccount(accountId);
-    if (account) {
-      this.initializeCredit(accountId, account.dailyCreditLimit);
-    }
+    this.initializeCredit(accountId);
   }
 
   resetAllCredits(): void {
     for (const account of this.accountManager.getAllAccounts()) {
-      this.initializeCredit(account.id, account.dailyCreditLimit);
+      this.initializeCredit(account.id);
     }
   }
 }
