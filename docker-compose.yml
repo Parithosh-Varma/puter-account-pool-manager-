@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  account-pool-manager:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: puter-account-pool
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - PUTER_API_BASE_URL=https://api.puter.com
+      - SCHEDULER_STRATEGY=${SCHEDULER_STRATEGY:-round-robin}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - API_KEY=${API_KEY:-change-me}
+      - HEALTH_CHECK_INTERVAL_MS=60000
+      - HEALTH_CHECK_TIMEOUT_MS=10000
+      - CREDIT_RESET_INTERVAL_MS=86400000
+      - DEFAULT_DAILY_CREDIT_LIMIT=100
+      - MAX_QUEUE_SIZE=1000
+      - REQUEST_TIMEOUT_MS=30000
+      - MAX_RETRIES=3
+      - ACCOUNTS=${ACCOUNTS:-[]}
+    volumes:
+      - ./logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile.dev
+    container_name: puter-dashboard
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:3000
+    volumes:
+      - ./dashboard/src:/app/src
+    depends_on:
+      - account-pool-manager
+    profiles:
+      - dev
+
+volumes:
+  logs:

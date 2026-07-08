@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.env
+logs/
+*.log
+coverage/
+.vite/
+dashboard/dist/
+dashboard/node_modules/
