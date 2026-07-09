@@ -66,7 +66,18 @@ async function main(): Promise<void> {
   // Setup Express
   const app = express();
 
-  app.use(helmet());
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "https://accounts.google.com"],
+        frameSrc: ["'self'", "https://accounts.google.com"],
+        connectSrc: ["'self'", "https://accounts.google.com"],
+        imgSrc: ["'self'", "data:", "https://*.google.com"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+      },
+    },
+  }));
   app.use(cors());
   app.use(express.json({ limit: '10mb' }));
   app.use(requestLogger);
