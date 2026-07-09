@@ -2,7 +2,7 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-COPY package.json tsconfig.json ./
+COPY package.json package-lock.json tsconfig.json ./
 RUN npm ci --ignore-scripts
 
 COPY src/ ./src/
@@ -12,7 +12,7 @@ FROM node:20-alpine AS dashboard-builder
 
 WORKDIR /dashboard
 
-COPY dashboard/package.json dashboard/tsconfig.json dashboard/vite.config.ts ./
+COPY dashboard/package.json dashboard/package-lock.json dashboard/tsconfig.json dashboard/vite.config.ts ./
 COPY dashboard/index.html ./
 COPY dashboard/src/ ./src/
 
