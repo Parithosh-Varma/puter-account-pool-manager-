@@ -21,6 +21,39 @@ export function createRouter(
   const router = Router();
   const log = getLogger();
 
+  // Google OAuth token exchange — always open
+  router.post('/auth/google', async (req: Request, res: Response) => {
+    try {
+      const { OAuth2Client } = require('google-auth-library');
+      const config = getConfig();
+      const client = new OAuth2Client();
+      const { idToken } = req.body;
+      if (!idToken) {
+        res.status(400).json({ error: 'idToken is required' });
+        return;
+      }
+      const ticket = await client.verifyIdToken({ idToken, audience: config.googleClientId });
+      const payload = ticket.getPayload();
+      if (!payload?.sub) {
+        res.status(401).json({ error: 'Invalid token' });
+        return;
+      }
+      res.json({
+        user: {
+          uid: payload.sub,
+          email: payload.email || null,
+          name: payload.name || null,
+          picture: payload.picture || null,
+        },
+        token: idToken,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      log.error('API', 'Google auth failed', { error: msg });
+      res.status(401).json({ error: 'Invalid token' });
+    }
+  });
+
   // List accounts
   router.get('/accounts', (_req: Request, res: Response) => {
     const accounts = accountManager.getAllAccounts();

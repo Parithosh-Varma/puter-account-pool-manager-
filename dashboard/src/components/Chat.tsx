@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -29,6 +30,7 @@ const PROVIDER_LOGOS: Record<string, string> = {
 };
 
 export default function Chat() {
+  const { idToken } = useAuth();
   const [messages, setMessages] = useState<Message[]>([
     { role: 'assistant', content: 'Send a message to test the account pool.' },
   ]);
@@ -41,12 +43,14 @@ export default function Chat() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  const authHeaders = (): Record<string, string> => idToken ? { Authorization: `Bearer ${idToken}` } : {};
+
   useEffect(() => {
-    fetch('/api/models')
+    fetch('/api/models', { headers: authHeaders() })
       .then(r => r.json())
       .then(d => setFeedModels(d.models || []))
       .catch(() => {});
-  }, []);
+  }, [idToken]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -83,7 +87,7 @@ export default function Chat() {
     try {
       const res = await fetch('/api/ai/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({ model, prompt: input }),
       });
       const data = await res.json();

@@ -63,7 +63,12 @@ interface PoolStats {
   strategy: string;
 }
 
-export function useApi() {
+function authHeaders(idToken: string | null): Record<string, string> {
+  if (!idToken) return {};
+  return { Authorization: `Bearer ${idToken}` };
+}
+
+export function useApi(idToken: string | null) {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [stats, setStats] = useState<PoolStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -72,9 +77,10 @@ export function useApi() {
 
   const fetchData = useCallback(async () => {
     try {
+      const headers = authHeaders(idToken);
       const [dashboardRes, statsRes] = await Promise.all([
-        fetch('/api/dashboard'),
-        fetch('/api/stats'),
+        fetch('/api/dashboard', { headers }),
+        fetch('/api/stats', { headers }),
       ]);
 
       if (!dashboardRes.ok || !statsRes.ok) {
@@ -94,7 +100,7 @@ export function useApi() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [idToken]);
 
   useEffect(() => {
     fetchData();
@@ -107,7 +113,7 @@ export function useApi() {
     try {
       const res = await fetch(`/api/accounts/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders(idToken) },
         body: JSON.stringify({ status: newStatus }),
       });
       if (res.ok) {
@@ -122,6 +128,7 @@ export function useApi() {
     try {
       const res = await fetch(`/api/accounts/${id}`, {
         method: 'DELETE',
+        headers: authHeaders(idToken),
       });
       if (res.ok) {
         await fetchData();
@@ -138,7 +145,7 @@ export function useApi() {
     try {
       const res = await fetch('/api/strategy', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders(idToken) },
         body: JSON.stringify({ strategy }),
       });
       if (res.ok) {

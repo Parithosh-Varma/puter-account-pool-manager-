@@ -172,4 +172,5 @@ export interface AppConfig {
   logLevel: LogLevel;
   logFile: string;
   apiKey: string;
+  googleClientId: string;
 }

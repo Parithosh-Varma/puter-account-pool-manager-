@@ -13,6 +13,7 @@ import { Database } from './database';
 import { createRouter } from './api/routes';
 import { createOpenAIRouter } from './api/openai';
 import { apiKeyAuth, requestLogger } from './api/middleware';
+import { firebaseAuth } from './auth/FirebaseAuth';
 
 async function main(): Promise<void> {
   const config = loadConfig();
@@ -80,11 +81,6 @@ async function main(): Promise<void> {
   });
   app.use('/api/', limiter);
 
-  // API key auth for production
-  if (config.nodeEnv === 'production') {
-    app.use('/api/', apiKeyAuth);
-  }
-
   // Mount routes
   const router = createRouter(
     accountManager,
@@ -96,12 +92,20 @@ async function main(): Promise<void> {
   );
   app.use('/api', router);
 
-  // OpenAI-compatible API (no rate limit, uses API key auth)
+  // OpenAI-compatible API
   const openaiRouter = createOpenAIRouter(requestScheduler);
-  if (config.nodeEnv === 'production') {
-    app.use('/v1', apiKeyAuth);
-  }
   app.use('/v1', openaiRouter);
+
+  // Authenticated API routes
+  if (config.nodeEnv === 'production') {
+    app.use(/^\/(api|v1)\//, (req, res, next) => {
+      if (req.path.startsWith('/api/auth/')) return next();
+      firebaseAuth(req, res, next);
+    });
+  }
+
+  // Serve dashboard static files (built by Dockerfile into ./public)
+  app.use(express.static('public'));
 
   // Health probe for Docker/K8s
   app.get('/healthz', (_req, res) => {

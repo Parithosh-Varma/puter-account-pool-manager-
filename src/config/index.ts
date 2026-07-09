@@ -72,6 +72,7 @@ export function loadConfig(): AppConfig {
     logLevel: parseLogLevel(),
     logFile: process.env.LOG_FILE || 'logs/account-pool.log',
     apiKey: process.env.API_KEY || 'dev-api-key',
+    googleClientId: process.env.GOOGLE_CLIENT_ID || '275728447491-22lt385sjul4oj45vllkfv3nm19mga1l.apps.googleusercontent.com',
   };
 
   cachedConfig = config;
