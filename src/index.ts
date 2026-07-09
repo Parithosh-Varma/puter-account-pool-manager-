@@ -70,9 +70,9 @@ async function main(): Promise<void> {
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "https://accounts.google.com"],
-        frameSrc: ["'self'", "https://accounts.google.com"],
-        connectSrc: ["'self'", "https://accounts.google.com"],
+        scriptSrc: ["'self'", "https://accounts.google.com", "https://apis.google.com"],
+        frameSrc: ["'self'", "https://accounts.google.com", "https://apis.google.com"],
+        connectSrc: ["'self'", "https://accounts.google.com", "https://apis.google.com"],
         imgSrc: ["'self'", "data:", "https://*.google.com"],
         styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://accounts.google.com"],
         styleSrcElem: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://accounts.google.com"],
