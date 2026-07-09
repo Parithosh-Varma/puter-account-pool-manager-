@@ -165,7 +165,7 @@ function AppContent() {
 }
 
 export default function App() {
-  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '275728447491-22lt385sjul4oj45vllkfv3nm19mga1l.apps.googleusercontent.com';
+  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '275728447491-g2f03lsnon3rritavjsbdg5pmeaj3hsa.apps.googleusercontent.com';
   return (
     <GoogleOAuthProvider clientId={clientId}>
       <AuthProvider>
