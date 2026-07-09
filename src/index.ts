@@ -80,6 +80,7 @@ async function main(): Promise<void> {
       },
     },
   }));
+
   app.use(cors());
   app.use(express.json({ limit: '10mb' }));
   app.use(requestLogger);
