@@ -1,118 +1,94 @@
-# puter-account-pool-manager
+# Puter Account Pool Manager
 
-Pool multiple Puter accounts, route AI requests through accounts with available credit, monitor everything from a React dashboard with a built-in chat interface.
+Get unlimited AI usage on **Claude Fable 5**, **Claude Sonnet 5**, **Gemini 2.5 Pro**, and 400+ other models by pooling multiple Puter accounts.
 
-## Quick start
+Each Puter account comes with free daily credits. When one runs out, this tool seamlessly failovers to the next — so you never see `"No usage left for request"` again.
 
 ```bash
-cp .env.example .env
-# Add Supabase credentials and optionally Puter tokens to .env
-npm install
-npm run build
-npm start
-```
+git clone https://github.com/Parithosh-Varma/puter-account-pool-manager-.git
+cp .env.example .env   # add Supabase credentials
+npm install && npm run build && npm start
 
-Dashboard (separate terminal):
-```bash
+# Separate terminal:
 cd dashboard && npm install && npm run dev
 ```
 
 ## How it works
 
-You have N Puter accounts, each with some free AI credits per day. This service pools them together:
+1. **Create multiple Puter accounts** (free at puter.com)
+2. **Sign in with Puter** in the dashboard to link them
+3. Every AI request is routed through an account with available credit
+4. When an account hits its daily limit, the scheduler automatically retries on the next healthy account
+5. You get uninterrupted access — the pool handles the rotation transparently
 
-- Routes each AI request to an account that still has credit
-- If an account's credit runs out or it gets rate-limited, the request automatically failovers to the next healthy account
-- Failed requests retry on a different account (configurable retry count)
-- If all accounts are busy, requests wait in a queue
-- Accounts persist across restarts via Supabase `puter_accounts` table
-- A dashboard shows real-time stats, credit usage, success rates, and latency
-
-Two scheduling strategies: **round-robin** (even distribution) or **least-used** (prefers accounts with more remaining credit).
-
-**Credit formula:** Each account's displayed credit = `number of accounts × 0.25` (simple heuristic, actual Puter credit limits are handled via 402 failover).
-
-## Adding accounts
-
-Use **"Sign in with Puter"** in the dashboard — opens a popup to `puter.com/?action=authme`, then captures the token via callback. No manual token/password fields.
-
-For token recovery of existing accounts, each card has a **"Re-auth with Puter"** button.
+Best of all, there's no provider lock-in. Use the same pool for Fable 5, Sonnet 5, Gemini 2.5 Pro, GPT-4o, DeepSeek, Qwen, Llama — every model Puter offers is available.
 
 ## Features
 
-- **OpenAI-compatible API** at `/v1/models` and `/v1/chat/completions` (with SSE streaming) — drop-in replacement for the OpenAI SDK
-- **Models fetched dynamically** from Puter API — all 400+ models available, no restrictions, no hardcoded lists
-- **Provider logos** in the chat model selector (Anthropic, Google, Qwen, etc.)
-- **Account delete** with confirmation prompt in the dashboard
-- **Health checker** automatically verifies accounts periodically, resets expired tokens to active on success
-- **Supabase storage** — responses saved to `ai_responses` table, accounts to `puter_accounts` table
+- **OpenAI-compatible API** at `/v1/chat/completions` with SSE streaming — works as a drop-in replacement for any OpenAI SDK
+- **400+ models** fetched dynamically from Puter's API — no hardcoded lists, no restrictions
+- **Automatic failover** — if one account is exhausted, rate-limited, or errored, the next healthy account handles the request
+- **"Sign in with Puter"** — no manual token extraction, just click and authenticate
+- **Account persistence** via Supabase — accounts survive server restarts
+- **React dashboard** with chat interface, real-time stats, and account management (enable/disable/re-auth/delete)
+- **Docker support** with docker-compose
 
 ## API
 
 ```
+POST /v1/chat/completions        OpenAI-compatible chat (SSE streaming)
+GET  /v1/models                  OpenAI-compatible model list
+
 POST /api/ai/chat                Submit an AI request (auto-routed)
+GET  /api/models                 List all available Puter models
 GET  /api/accounts               List accounts with health + credit
 POST /api/accounts               Add an account
 DELETE /api/accounts/:id         Remove an account
-PATCH /api/accounts/:id          Update name/token/status/limit
-GET  /api/models                 List all available Puter models
+PATCH /api/accounts/:id          Update status/token
 GET  /api/stats                  Pool stats
 GET  /api/dashboard              Full data for the React UI
 GET  /api/history                Request history
 GET  /healthz                    Liveness check
-
-GET  /v1/models                  OpenAI-compatible model list
-POST /v1/chat/completions        OpenAI-compatible chat (supports SSE streaming)
 ```
 
-Example AI request:
-```json
-{
-  "model": "claude-sonnet-5",
-  "prompt": "hello"
-}
+Example:
+```bash
+curl http://localhost:3000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model":"claude-fable-5","messages":[{"role":"user","content":"Hello"}]}'
 ```
 
 ## Config
 
-```env
-# Supabase (required for persistence)
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_KEY=your-service-role-key
-
-# Accounts can be added via the dashboard UI instead
-ACCOUNTS=[{"id":"a1","name":"Main","token":"puter-token-here"}]
-
-# Strategy
-SCHEDULER_STRATEGY=least-used
-```
-
 Full options in `.env.example`.
+
+Key variables:
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `SUPABASE_URL` | — | Supabase project URL (accounts persist here) |
+| `SUPABASE_KEY` | — | Supabase service-role key |
+| `SCHEDULER_STRATEGY` | round-robin | `round-robin` or `least-used` |
+| `MAX_RETRIES` | 3 | How many accounts to try before failing |
+| `HEALTH_CHECK_INTERVAL_MS` | 60000 | How often to re-verify accounts |
 
 ## Dashboard
 
-```
-http://localhost:5173
-```
+Open `http://localhost:5173` to:
+- Chat with any model (searchable dropdown with provider logos)
+- Add accounts via "Sign in with Puter"
+- Monitor pool health, credit, latency, error rates
+- Enable/disable/delete accounts
+- Switch scheduling strategy
 
-Includes:
-- Pool stats (total/active/error accounts, request counts, latency)
-- Account cards with status, health, credit, enable/disable/re-auth/delete
-- Chat interface with model selector (searchable, provider logos)
-- Usage graph
-- Strategy control (round-robin / least-used)
+## Database
 
-## Database (Supabase)
-
-Run `supabase-schema.sql` in your Supabase SQL editor to create the required tables:
-- `puter_accounts` — account storage
-- `ai_responses` — AI response history
+Run `supabase-schema.sql` in Supabase SQL editor to create `puter_accounts` (account storage) and `ai_responses` (request history).
 
 ## Docker
 
 ```bash
-export ACCOUNTS='[{"id":"a1","name":"Main","token":"..."}]'
-export API_KEY=your-key
+export SUPABASE_URL=... SUPABASE_KEY=...
 docker compose up -d
 ```
 
