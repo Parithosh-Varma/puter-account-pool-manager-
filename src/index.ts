@@ -74,7 +74,9 @@ async function main(): Promise<void> {
         frameSrc: ["'self'", "https://accounts.google.com"],
         connectSrc: ["'self'", "https://accounts.google.com"],
         imgSrc: ["'self'", "data:", "https://*.google.com"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://accounts.google.com"],
+        styleSrcElem: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://accounts.google.com"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com"],
       },
     },
   }));

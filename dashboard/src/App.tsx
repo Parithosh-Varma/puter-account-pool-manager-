@@ -74,7 +74,7 @@ function AppContent() {
             style={styles.themeToggle}
             title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
           >
-            {theme === 'dark' ? '☀️' : '🌙'}
+            {theme === 'dark' ? 'Light' : 'Dark'}
           </button>
           <div style={styles.tabs}>
             <button

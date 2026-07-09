@@ -7,7 +7,12 @@ export default function LoginPage() {
   return (
     <div style={styles.container}>
       <div style={styles.card}>
-        <div style={styles.logo}>🔐</div>
+        <div style={styles.logo}>
+          <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+            <rect width="48" height="48" rx="12" fill="#6366f1"/>
+            <path d="M24 12a6 6 0 00-6 6v4h-2a2 2 0 00-2 2v12a2 2 0 002 2h16a2 2 0 002-2V24a2 2 0 00-2-2h-2v-4a6 6 0 00-6-6zm0 4a2 2 0 012 2v4h-4v-4a2 2 0 012-2z" fill="white"/>
+          </svg>
+        </div>
         <h1 style={styles.title}>Puter Account Pool</h1>
         <p style={styles.subtitle}>Sign in to manage your AI account pool</p>
         <div style={styles.btnWrap}>

@@ -33,7 +33,12 @@ export default function AccountList({ accounts, onToggle, onRefresh, onDelete }:
   if (accounts.length === 0) {
     return (
       <div style={styles.empty}>
-        <div style={styles.emptyIcon}>📭</div>
+        <div style={styles.emptyIcon}>
+          <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+            <rect x="4" y="10" width="40" height="30" rx="4" stroke="#64748b" strokeWidth="2" fill="none"/>
+            <path d="M4 14l20 14 20-14" stroke="#64748b" strokeWidth="2" fill="none"/>
+          </svg>
+        </div>
         <p style={styles.emptyText}>No accounts configured</p>
         <p style={styles.emptyHint}>Add accounts via the REST API or environment variables</p>
       </div>
