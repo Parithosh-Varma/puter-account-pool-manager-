@@ -1,8 +1,10 @@
-# Puter Account Pool Manager
+# Puter Account Pool Manager — Free AI API with No Limits
 
-Get unlimited AI usage on **Claude Fable 5**, **Claude Sonnet 5**, **Gemini 2.5 Pro**, and 400+ other models by pooling multiple Puter accounts.
+**Get a free AI API** for **Claude Fable 5**, **Claude Sonnet 5**, **Gemini 2.5 Pro**, GPT-4o, DeepSeek, and 400+ models by pooling free Puter accounts. **Unlimited AI credits** — no credit card, no rate limits, no token costs.
 
-Each Puter account comes with free daily credits. When one runs out, this tool seamlessly failovers to the next — so you never see `"No usage left for request"` again.
+Each Puter account comes with free daily AI credits. When one runs out, this tool seamlessly failovers to the next — so you never see `"No usage left for request"` again.
+
+> **SEO keywords:** free AI API · free AI credits · unlimited AI API · free Claude API · free GPT-4 API · free Gemini API · free DeepSeek API · AI API pool · Puter accounts pool · free LLM API · no cost AI API · free AI model router
 
 ```bash
 git clone https://github.com/Parithosh-Varma/puter-account-pool-manager-.git
@@ -21,17 +23,18 @@ cd dashboard && npm install && npm run dev
 4. When an account hits its daily limit, the scheduler automatically retries on the next healthy account
 5. You get uninterrupted access — the pool handles the rotation transparently
 
-Best of all, there's no provider lock-in. Use the same pool for Fable 5, Sonnet 5, Gemini 2.5 Pro, GPT-4o, DeepSeek, Qwen, Llama — every model Puter offers is available.
+**It's a free AI API proxy** — an OpenAI-compatible endpoint that distributes requests across your accounts, so no single account ever runs out. Use it as a **free alternative to OpenAI**, **free alternative to Claude API**, or **free alternative to Gemini API**. Every model Puter offers is available.
 
 ## Features
 
-- **OpenAI-compatible API** at `/v1/chat/completions` with SSE streaming — works as a drop-in replacement for any OpenAI SDK
-- **400+ models** fetched dynamically from Puter's API — no hardcoded lists, no restrictions
-- **Automatic failover** — if one account is exhausted, rate-limited, or errored, the next healthy account handles the request
-- **"Sign in with Puter"** — no manual token extraction, just click and authenticate
-- **Account persistence** via Supabase — accounts survive server restarts
-- **React dashboard** with chat interface, real-time stats, and account management (enable/disable/re-auth/delete)
-- **Docker support** with docker-compose
+- **Free AI API** — fully OpenAI-compatible at `/v1/chat/completions` with SSE streaming
+- **400+ free models** — Claude Fable 5, Claude Sonnet 5, Gemini 2.5 Pro, GPT-4o, DeepSeek V3, Qwen, Llama, Mistral, and more
+- **Unlimited AI credits** — automatic failover across accounts means you never hit a cap
+- **No manual token extraction** — "Sign in with Puter" button handles authentication
+- **Accounts persist in Supabase** — survives server restarts
+- **React dashboard** with built-in chat UI, model selector with provider logos, real-time pool stats
+- **Free AI API key alternative** — no Stripe, no usage billing, no credit card required
+- **Docker support** — one-command deploy with docker-compose
 
 ## API
 
@@ -51,11 +54,22 @@ GET  /api/history                Request history
 GET  /healthz                    Liveness check
 ```
 
-Example:
+Example (works with any OpenAI SDK):
 ```bash
 curl http://localhost:3000/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{"model":"claude-fable-5","messages":[{"role":"user","content":"Hello"}]}'
+```
+
+Using the OpenAI Python SDK:
+```python
+from openai import OpenAI
+client = OpenAI(base_url="http://localhost:3000/v1", api_key="ignored")
+response = client.chat.completions.create(
+    model="claude-fable-5",
+    messages=[{"role": "user", "content": "Hello"}]
+)
+print(response.choices[0].message.content)
 ```
 
 ## Config
@@ -75,7 +89,7 @@ Key variables:
 ## Dashboard
 
 Open `http://localhost:5173` to:
-- Chat with any model (searchable dropdown with provider logos)
+- Chat with any model for free (Claude Fable 5, Sonnet 5, Gemini 2.5 Pro, etc.)
 - Add accounts via "Sign in with Puter"
 - Monitor pool health, credit, latency, error rates
 - Enable/disable/delete accounts
